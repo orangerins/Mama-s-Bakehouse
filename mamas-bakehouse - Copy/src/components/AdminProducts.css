@@ -1,0 +1,763 @@
+
+/* Mama's Bakehouse — Admin Products Page */
+
+.admin-products-page {
+  width: 100%;
+  max-width: 1500px;
+  margin: 0 auto;
+  color: #342b24;
+}
+
+.admin-products-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+.admin-products-heading h1 {
+  margin: 0;
+  color: #352b24;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 35px;
+  font-weight: 500;
+  letter-spacing: -1px;
+}
+
+.admin-products-heading p:not(.admin-kicker) {
+  margin: 9px 0 0;
+  color: #92867b;
+  font-size: 13px;
+}
+
+.admin-refresh-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  padding: 12px 18px;
+  background: #ffffff;
+  border: 1px solid #eae5de;
+  border-radius: 9px;
+  color: #614834;
+  font-size: 13px;
+  font-weight: 600;
+  transition: background 0.2s;
+}
+
+.admin-refresh-button:hover:not(:disabled) {
+  background: #f1ece6;
+}
+
+.admin-refresh-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* PRODUCT SUMMARY */
+
+.admin-products-summary {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 25px;
+  padding: 20px 24px;
+  background: #ffffff;
+  border: 1px solid #eae5de;
+  border-radius: 13px;
+}
+
+.admin-products-summary-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  flex-shrink: 0;
+  background: #f4eee7;
+  border-radius: 11px;
+  color: #765943;
+}
+
+.admin-products-summary strong {
+  display: block;
+  margin-bottom: 5px;
+  color: #342b24;
+  font-size: 18px;
+}
+
+.admin-products-summary span {
+  color: #92867b;
+  font-size: 12px;
+}
+
+/* PRODUCT LIST */
+
+.admin-products-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.admin-product-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+  padding: 24px;
+  background: #ffffff;
+  border: 1px solid #eae5de;
+  border-radius: 14px;
+  box-shadow: 0 4px 16px rgba(48, 41, 35, 0.025);
+}
+
+.admin-product-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 54px;
+  height: 54px;
+  flex-shrink: 0;
+  background: #f4eee7;
+  border-radius: 12px;
+  color: #765943;
+}
+
+.admin-product-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.admin-product-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.admin-product-title-row h3 {
+  margin: 0;
+  color: #342b24;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.admin-product-status {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 10px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.admin-product-status.available {
+  background: #edf5ed;
+  color: #437249;
+}
+
+.admin-product-status.unavailable {
+  background: #f8ecea;
+  color: #a45249;
+}
+
+.admin-product-category {
+  margin: 8px 0 0;
+  color: #9b806a;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.admin-product-description {
+  margin: 10px 0 0;
+  color: #92867b;
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.admin-product-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  margin-top: 17px;
+}
+
+.admin-product-meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #8d8176;
+  font-size: 12px;
+}
+
+.admin-product-meta svg {
+  color: #a48d78;
+}
+
+.admin-product-price {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 7px;
+  flex-shrink: 0;
+  padding-top: 3px;
+}
+
+.admin-product-price small {
+  color: #92867b;
+  font-size: 11px;
+}
+
+.admin-product-price strong {
+  color: #614834;
+  font-size: 21px;
+  font-weight: 700;
+}
+
+.admin-products-empty {
+  padding: 45px 20px;
+  background: #ffffff;
+  border: 1px solid #eae5de;
+  border-radius: 14px;
+  color: #92867b;
+  font-size: 13px;
+  text-align: center;
+}
+
+/* RESPONSIVE DESIGN */
+
+@media (max-width: 700px) {
+  .admin-products-heading {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .admin-products-heading h1 {
+    font-size: 30px;
+  }
+
+  .admin-product-card {
+    flex-wrap: wrap;
+    gap: 15px;
+    padding: 18px;
+  }
+
+  .admin-product-icon {
+    width: 45px;
+    height: 45px;
+  }
+
+  .admin-product-details {
+    flex-basis: calc(100% - 65px);
+  }
+
+  .admin-product-price {
+    width: 100%;
+    padding-top: 15px;
+    border-top: 1px solid #f0ece7;
+    align-items: flex-start;
+  }
+
+  .admin-product-meta {
+    gap: 12px;
+  }
+}
+
+/* ==========================================
+   MAMA'S BAKEHOUSE — PRODUCT EDITING DESIGN
+   ========================================== */
+
+/* EDIT PRODUCT BUTTON */
+
+.admin-product-edit-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  margin-top: 20px;
+  padding: 10px 16px;
+
+  background: #f7f3ee;
+  color: #6c503c;
+  border: 1px solid #e6d9cc;
+  border-radius: 9px;
+
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.4;
+
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.admin-product-edit-button:hover:not(:disabled) {
+  background: #eee5da;
+  border-color: #d5c1ae;
+  transform: translateY(-1px);
+}
+
+.admin-product-edit-button:focus-visible,
+.admin-product-save:focus-visible,
+.admin-product-cancel:focus-visible {
+  outline: 3px solid #c8aa8f;
+  outline-offset: 3px;
+}
+
+.admin-product-edit-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* EDITING FORM */
+
+.admin-product-edit-form {
+  width: 100%;
+  max-width: 760px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 5px 0 3px;
+}
+
+.admin-product-edit-form h3 {
+  margin: 0 0 24px;
+  color: #352b24;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 23px;
+  font-weight: 500;
+  letter-spacing: -0.4px;
+}
+
+.admin-product-edit-form label {
+  display: block;
+  margin-bottom: 9px;
+  color: #55463a;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.admin-product-edit-form input:not([type="checkbox"]),
+.admin-product-edit-form textarea {
+  display: block;
+  width: 100%;
+  min-height: 45px;
+  margin: 0 0 20px;
+  padding: 12px 14px;
+
+  background: #ffffff;
+  border: 1px solid #e4ddd5;
+  border-radius: 9px;
+
+  color: #352b24;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+
+  outline: none;
+  box-shadow: none;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.admin-product-edit-form textarea {
+  min-height: 105px;
+  resize: vertical;
+}
+
+.admin-product-edit-form input:not([type="checkbox"]):focus,
+.admin-product-edit-form textarea:focus {
+  border-color: #9c816c;
+  box-shadow: 0 0 0 3px rgba(156, 129, 108, 0.12);
+}
+
+/* THREE-COLUMN INPUT GRID */
+
+.admin-product-edit-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 3px;
+}
+
+.admin-product-edit-grid > div {
+  min-width: 0;
+}
+
+/* AVAILABILITY CHECKBOX */
+
+.admin-product-edit-form .admin-product-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  width: fit-content;
+  margin: 4px 0 26px;
+  padding: 14px 17px;
+
+  background: #f8f6f2;
+  border: 1px solid #eae5de;
+  border-radius: 10px;
+
+  color: #54483f;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.admin-product-checkbox input[type="checkbox"] {
+  width: 17px;
+  height: 17px;
+  margin: 0;
+  accent-color: #6d523f;
+  cursor: pointer;
+}
+
+/* SAVE AND CANCEL BUTTONS */
+
+.admin-product-edit-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding-top: 22px;
+  border-top: 1px solid #eee9e2;
+}
+
+.admin-product-save,
+.admin-product-cancel {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+
+  min-height: 43px;
+  padding: 12px 20px;
+
+  border-radius: 9px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.admin-product-save {
+  background: #46372d;
+  border: 1px solid #46372d;
+  color: #ffffff;
+}
+
+.admin-product-save:hover:not(:disabled) {
+  background: #66503f;
+  border-color: #66503f;
+}
+
+.admin-product-cancel {
+  background: #ffffff;
+  border: 1px solid #e5ded6;
+  color: #756457;
+}
+
+.admin-product-cancel:hover:not(:disabled) {
+  background: #f5f1ec;
+}
+
+.admin-product-save:disabled,
+.admin-product-cancel:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* SUCCESS MESSAGE */
+
+.admin-product-success {
+  padding: 14px 17px;
+  margin: 0 0 20px;
+
+  background: #edf6ee;
+  border: 1px solid #d3e6d5;
+  border-radius: 10px;
+
+  color: #386c46;
+  font-size: 13px;
+  font-weight: 550;
+}
+
+/* SMALL SCREENS */
+
+@media (max-width: 700px) {
+  .admin-product-edit-grid {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .admin-product-edit-form h3 {
+    font-size: 21px;
+  }
+
+  .admin-product-edit-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .admin-product-save,
+  .admin-product-cancel {
+    width: 100%;
+  }
+}
+
+/* ==========================================
+   MAMA'S BAKEHOUSE — PRODUCT OPTIONS DESIGN
+   ========================================== */
+
+/* PRODUCT ACTION BUTTONS */
+
+.admin-product-actions-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.admin-product-actions-row .admin-product-edit-button {
+  margin-top: 0;
+}
+
+/* OPTIONS CONTAINER */
+
+.admin-options-section {
+  width: 100%;
+  margin-top: 26px;
+  padding: 24px;
+  background: #faf8f5;
+  border: 1px solid #eae2d9;
+  border-radius: 14px;
+}
+
+.admin-options-section h4 {
+  margin: 0 0 8px;
+  color: #382d25;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.admin-options-help {
+  margin: 0 0 22px;
+  color: #928277;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+/* INDIVIDUAL OPTION ROWS */
+
+.admin-option-item {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  width: 100%;
+  min-width: 0;
+  margin-bottom: 10px;
+  padding: 17px 20px;
+  background: #ffffff;
+  border: 1px solid #eae5df;
+  border-radius: 11px;
+}
+
+.admin-option-item:last-child {
+  margin-bottom: 0;
+}
+
+/* OPTION NAME AND AVAILABILITY */
+
+.admin-option-info {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 9px;
+  flex: 1;
+  min-width: 0;
+}
+
+.admin-option-group {
+  padding: 5px 9px;
+  background: #f3ede6;
+  color: #96765f;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.admin-option-info strong {
+  color: #342b24;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+/* PRICE DETAILS */
+
+.admin-option-price {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 5px;
+  min-width: 105px;
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.admin-option-price small {
+  color: #a18d7d;
+  font-size: 11px;
+}
+
+.admin-option-price strong {
+  color: #604631;
+  font-size: 17px;
+  font-weight: 750;
+}
+
+/* EDIT OPTION BUTTON */
+
+.admin-option-edit-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  flex-shrink: 0;
+  padding: 10px 15px;
+  background: #f7f3ee;
+  border: 1px solid #e4d8cc;
+  border-radius: 8px;
+  color: #694d38;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.admin-option-edit-button:hover:not(:disabled) {
+  background: #eee4d9;
+}
+
+.admin-option-edit-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* OPTION EDITING FORM */
+
+.admin-option-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  width: 100%;
+  max-width: 650px;
+}
+
+.admin-option-form > strong {
+  display: block;
+  margin-bottom: 20px;
+  color: #765942;
+  font-size: 13px;
+}
+
+.admin-option-form > label:not(.admin-option-checkbox) {
+  margin-bottom: 8px;
+  color: #55463a;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.admin-option-form > input {
+  width: 100%;
+  min-height: 44px;
+  margin-bottom: 18px;
+  padding: 11px 14px;
+  background: #ffffff;
+  border: 1px solid #e4ddd5;
+  border-radius: 9px;
+  color: #352b24;
+  font-family: inherit;
+  font-size: 13px;
+  outline: none;
+}
+
+.admin-option-form > input:focus {
+  border-color: #9c816c;
+  box-shadow: 0 0 0 3px rgba(156, 129, 108, 0.12);
+}
+
+.admin-option-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: fit-content;
+  margin: 0 0 22px;
+  padding: 12px 15px;
+  background: #f8f6f2;
+  border: 1px solid #eae5de;
+  border-radius: 9px;
+  color: #55463a;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.admin-option-checkbox input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: #6d523f;
+}
+
+.admin-option-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding-top: 17px;
+  border-top: 1px solid #eee9e2;
+}
+
+/* RESPONSIVE DESIGN */
+
+@media (max-width: 700px) {
+  .admin-options-section {
+    padding: 16px;
+  }
+
+  .admin-option-item {
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 15px;
+  }
+
+  .admin-option-info {
+    flex-basis: 100%;
+  }
+
+  .admin-option-price {
+    margin-left: 0;
+    align-items: flex-start;
+  }
+
+  .admin-option-edit-button {
+    margin-left: auto;
+  }
+
+  .admin-option-actions {
+    flex-direction: column;
+  }
+
+  .admin-option-actions button {
+    width: 100%;
+  }
+}
