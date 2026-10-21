@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   ShoppingBag,
   ShoppingCart,
+  Package,
   CakeSlice,
   Plus,
   Minus,
@@ -12,9 +13,12 @@ import {
   ChevronDown,
   Search,
   X,
+  ArrowLeft,
 } from "lucide-react";
+
 import { supabase } from "../lib/supabase";
 import CustomerCheckout from "./CustomerCheckout";
+import CustomerOrders from "./CustomerOrders";
 import "./CustomerDashboard.css";
 
 const peso = (amount) =>
@@ -39,6 +43,7 @@ function ProductCard({ product, options, onAdd }) {
   }, [options]);
 
   const groupNames = Object.keys(groups);
+
   const [selected, setSelected] = useState({});
 
   const selectedOptions = groupNames
@@ -106,7 +111,8 @@ function ProductCard({ product, options, onAdd }) {
           </span>
 
           <span>
-            Preparation: {product.preparation_days ?? 1} day(s)
+            Preparation:{" "}
+            {product.preparation_days ?? 1} day(s)
           </span>
         </div>
 
@@ -138,7 +144,9 @@ function ProductCard({ product, options, onAdd }) {
                   >
                     {option.option_name}
                     {Number(option.additional_price) !== 0
-                      ? ` (+${peso(option.additional_price)})`
+                      ? ` (+${peso(
+                          option.additional_price
+                        )})`
                       : ""}
                   </option>
                 ))}
@@ -193,6 +201,7 @@ export default function CustomerDashboard({
 
   const [cart, setCart] = useState([]);
   const [search, setSearch] = useState("");
+
   const [categoryFilter, setCategoryFilter] =
     useState("all");
 
@@ -201,9 +210,16 @@ export default function CustomerDashboard({
   const [notice, setNotice] = useState("");
 
   const [showCart, setShowCart] = useState(false);
+  const [showCheckout, setShowCheckout] =
+    useState(false);
 
-  // NEW: Controls the checkout view.
-  const [showCheckout, setShowCheckout] = useState(false);
+  // Controls which customer page is visible.
+  const [activePage, setActivePage] =
+    useState("menu");
+
+  // Refreshes My Orders when returning from checkout.
+  const [ordersRefreshKey, setOrdersRefreshKey] =
+    useState(0);
 
   async function loadCatalog() {
     setLoading(true);
@@ -259,21 +275,24 @@ export default function CustomerDashboard({
     loadCatalog();
   }, []);
 
-  const visibleProducts = products.filter((product) => {
-    const matchesSearch =
-      product.name
-        .toLowerCase()
-        .includes(search.toLowerCase()) ||
-      (product.description || "")
-        .toLowerCase()
-        .includes(search.toLowerCase());
+  const visibleProducts = products.filter(
+    (product) => {
+      const matchesSearch =
+        product.name
+          .toLowerCase()
+          .includes(search.toLowerCase()) ||
+        (product.description || "")
+          .toLowerCase()
+          .includes(search.toLowerCase());
 
-    const matchesCategory =
-      categoryFilter === "all" ||
-      String(product.category_id) === categoryFilter;
+      const matchesCategory =
+        categoryFilter === "all" ||
+        String(product.category_id) ===
+          categoryFilter;
 
-    return matchesSearch && matchesCategory;
-  });
+      return matchesSearch && matchesCategory;
+    }
+  );
 
   const cartCount = cart.reduce(
     (sum, item) => sum + item.quantity,
@@ -286,7 +305,11 @@ export default function CustomerDashboard({
     0
   );
 
-  function addToCart(product, selectedOptions, finalPrice) {
+  function addToCart(
+    product,
+    selectedOptions,
+    finalPrice
+  ) {
     const optionIds = selectedOptions
       .map((option) => option.id)
       .sort();
@@ -353,7 +376,6 @@ export default function CustomerDashboard({
     );
   }
 
-  // NEW: Open checkout without removing cart items.
   function openCheckout() {
     if (cart.length === 0) return;
 
@@ -362,16 +384,39 @@ export default function CustomerDashboard({
     setShowCart(false);
   }
 
-  // NEW: Return to cart without losing items.
   function backToCart() {
     setShowCheckout(false);
     setShowCart(true);
   }
 
-  // NEW: Close checkout and return to the catalog.
   function closeCheckout() {
     setShowCheckout(false);
     setShowCart(false);
+  }
+
+  function openMenu() {
+    setActivePage("menu");
+    setShowCart(false);
+    setShowCheckout(false);
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  }
+
+  function openOrders() {
+    setActivePage("orders");
+    setShowCart(false);
+    setShowCheckout(false);
+
+    // Remount the orders component to reload latest data.
+    setOrdersRefreshKey((previous) => previous + 1);
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
   }
 
   const getCategoryName = (categoryId) =>
@@ -387,9 +432,9 @@ export default function CustomerDashboard({
           href="#catalog"
           className="customer-brand"
           aria-label="Mama's Bakehouse home"
-          onClick={() => {
-            setShowCheckout(false);
-            setShowCart(false);
+          onClick={(event) => {
+            event.preventDefault();
+            openMenu();
           }}
         >
           <span className="customer-brand-mark">
@@ -402,7 +447,10 @@ export default function CustomerDashboard({
           </span>
         </a>
 
-        <div className="customer-header-actions">
+        <div
+          className="customer-header-actions"
+          style={{ flexWrap: "wrap" }}
+        >
           <span className="customer-greeting">
             Hello,{" "}
             {user?.user_metadata?.full_name ||
@@ -410,6 +458,26 @@ export default function CustomerDashboard({
               "Customer"}
           </span>
 
+          {/* MY ORDERS NAVIGATION */}
+          <button
+            type="button"
+            className="customer-cart-button"
+            onClick={openOrders}
+            style={
+              activePage === "orders"
+                ? {
+                    background: "#76543c",
+                    color: "#fff",
+                    borderColor: "#76543c",
+                  }
+                : undefined
+            }
+          >
+            <Package size={19} />
+            My Orders
+          </button>
+
+          {/* CART BUTTON */}
           <button
             type="button"
             className="customer-cart-button"
@@ -436,193 +504,247 @@ export default function CustomerDashboard({
       </header>
 
       <main id="catalog" className="customer-main">
-        <section className="customer-hero">
-          <div>
-            <p className="customer-eyebrow">
-              FRESHLY MADE, JUST FOR YOU
-            </p>
-
-            <h1>A little sweetness goes a long way.</h1>
-
-            <p>
-              Discover homemade cakes and baked goods
-              prepared with care for every occasion.
-            </p>
-
-            <a
-              href="#customer-products"
-              className="customer-hero-link"
-            >
-              Explore our menu
-              <ChevronDown size={17} />
-            </a>
-          </div>
-
-          <div className="customer-hero-icon">
-            <CakeSlice size={86} strokeWidth={1.1} />
-          </div>
-        </section>
-
-        <section
-          id="customer-products"
-          className="customer-catalog"
-        >
-          <div className="customer-section-heading">
-            <div>
-              <p className="customer-eyebrow">
-                MADE WITH LOVE
-              </p>
-
-              <h2>Our Bakery Menu</h2>
-
-              <p>
-                Choose your favorites and customize your
-                order.
-              </p>
-            </div>
-
-            <button
-              type="button"
-              className="customer-refresh-button"
-              onClick={loadCatalog}
-              disabled={loading}
-            >
-              <RefreshCw size={16} />
-              Refresh
-            </button>
-          </div>
-
-          <div className="customer-filters">
-            <div className="customer-search">
-              <Search size={18} />
-
-              <input
-                type="search"
-                placeholder="Search baked goods..."
-                value={search}
-                onChange={(event) =>
-                  setSearch(event.target.value)
-                }
-              />
-            </div>
-
-            <div className="customer-category-filter">
-              <select
-                value={categoryFilter}
-                onChange={(event) =>
-                  setCategoryFilter(event.target.value)
-                }
-              >
-                <option value="all">
-                  All Categories
-                </option>
-
-                {categories.map((category) => (
-                  <option
-                    key={category.id}
-                    value={String(category.id)}
-                  >
-                    {category.name}
-                  </option>
-                ))}
-              </select>
-
-              <ChevronDown size={16} />
-            </div>
-          </div>
-
-          {notice && !showCart && !showCheckout && (
-            <div className="customer-success-message">
-              {notice}
-
-              <button
-                type="button"
-                onClick={() => setNotice("")}
-                aria-label="Dismiss message"
-              >
-                <X size={16} />
-              </button>
-            </div>
-          )}
-
-          {error && (
-            <div className="customer-error-message">
-              <strong>Catalog unavailable</strong>
-
-              <p>{error}</p>
-
-              <p>
-                Check the Supabase read policies for
-                products, product_options, and categories
-                if access is denied.
-              </p>
-
-              <button
-                type="button"
-                onClick={loadCatalog}
-                className="customer-primary-button"
-              >
-                Try Again
-              </button>
-            </div>
-          )}
-
-          {loading ? (
-            <div className="customer-empty-state">
-              <RefreshCw size={28} />
-              <h3>Preparing our menu...</h3>
-              <p>Loading fresh goodies for you.</p>
-            </div>
-          ) : !error && visibleProducts.length === 0 ? (
-            <div className="customer-empty-state">
-              <CakeSlice size={42} />
-              <h3>No products found</h3>
-
-              <p>
-                Try another search or category, or check
-                back for new baked goods.
-              </p>
-            </div>
-          ) : (
-            !error && (
-              <>
-                <p className="customer-result-count">
-                  {visibleProducts.length}{" "}
-                  {visibleProducts.length === 1
-                    ? "product"
-                    : "products"}{" "}
-                  available
+        {activePage === "menu" ? (
+          <>
+            {/* BAKERY HERO */}
+            <section className="customer-hero">
+              <div>
+                <p className="customer-eyebrow">
+                  FRESHLY MADE, JUST FOR YOU
                 </p>
 
-                <div className="customer-product-grid">
-                  {visibleProducts.map((product) => (
-                    <div
-                      key={product.id}
-                      className="customer-product-wrapper"
-                      data-category={getCategoryName(
-                        product.category_id
-                      )}
-                    >
-                      <ProductCard
-                        product={product}
-                        options={options.filter(
-                          (option) =>
-                            option.product_id === product.id
-                        )}
-                        onAdd={addToCart}
-                      />
+                <h1>
+                  A little sweetness goes a long way.
+                </h1>
 
-                      <span className="customer-category-caption">
-                        {getCategoryName(product.category_id)}
-                      </span>
-                    </div>
-                  ))}
+                <p>
+                  Discover homemade cakes and baked
+                  goods prepared with care for every
+                  occasion.
+                </p>
+
+                <a
+                  href="#customer-products"
+                  className="customer-hero-link"
+                >
+                  Explore our menu
+                  <ChevronDown size={17} />
+                </a>
+              </div>
+
+              <div className="customer-hero-icon">
+                <CakeSlice
+                  size={86}
+                  strokeWidth={1.1}
+                />
+              </div>
+            </section>
+
+            {/* BAKERY CATALOG */}
+            <section
+              id="customer-products"
+              className="customer-catalog"
+            >
+              <div className="customer-section-heading">
+                <div>
+                  <p className="customer-eyebrow">
+                    MADE WITH LOVE
+                  </p>
+
+                  <h2>Our Bakery Menu</h2>
+
+                  <p>
+                    Choose your favorites and
+                    customize your order.
+                  </p>
                 </div>
-              </>
-            )
-          )}
-        </section>
 
+                <button
+                  type="button"
+                  className="customer-refresh-button"
+                  onClick={loadCatalog}
+                  disabled={loading}
+                >
+                  <RefreshCw size={16} />
+                  Refresh
+                </button>
+              </div>
+
+              {/* SEARCH AND CATEGORY FILTER */}
+              <div className="customer-filters">
+                <div className="customer-search">
+                  <Search size={18} />
+
+                  <input
+                    type="search"
+                    placeholder="Search baked goods..."
+                    value={search}
+                    onChange={(event) =>
+                      setSearch(event.target.value)
+                    }
+                  />
+                </div>
+
+                <div className="customer-category-filter">
+                  <select
+                    value={categoryFilter}
+                    onChange={(event) =>
+                      setCategoryFilter(
+                        event.target.value
+                      )
+                    }
+                  >
+                    <option value="all">
+                      All Categories
+                    </option>
+
+                    {categories.map((category) => (
+                      <option
+                        key={category.id}
+                        value={String(category.id)}
+                      >
+                        {category.name}
+                      </option>
+                    ))}
+                  </select>
+
+                  <ChevronDown size={16} />
+                </div>
+              </div>
+
+              {notice &&
+                !showCart &&
+                !showCheckout && (
+                  <div className="customer-success-message">
+                    {notice}
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setNotice("")
+                      }
+                      aria-label="Dismiss message"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+                )}
+
+              {error && (
+                <div className="customer-error-message">
+                  <strong>
+                    Catalog unavailable
+                  </strong>
+
+                  <p>{error}</p>
+
+                  <p>
+                    Check the Supabase read policies
+                    for products, product_options,
+                    and categories if access is denied.
+                  </p>
+
+                  <button
+                    type="button"
+                    onClick={loadCatalog}
+                    className="customer-primary-button"
+                  >
+                    Try Again
+                  </button>
+                </div>
+              )}
+
+              {loading ? (
+                <div className="customer-empty-state">
+                  <RefreshCw size={28} />
+                  <h3>Preparing our menu...</h3>
+                  <p>
+                    Loading fresh goodies for you.
+                  </p>
+                </div>
+              ) : !error &&
+                visibleProducts.length === 0 ? (
+                <div className="customer-empty-state">
+                  <CakeSlice size={42} />
+                  <h3>No products found</h3>
+
+                  <p>
+                    Try another search or category,
+                    or check back for new baked goods.
+                  </p>
+                </div>
+              ) : (
+                !error && (
+                  <>
+                    <p className="customer-result-count">
+                      {visibleProducts.length}{" "}
+                      {visibleProducts.length === 1
+                        ? "product"
+                        : "products"}{" "}
+                      available
+                    </p>
+
+                    <div className="customer-product-grid">
+                      {visibleProducts.map(
+                        (product) => (
+                          <div
+                            key={product.id}
+                            className="customer-product-wrapper"
+                            data-category={getCategoryName(
+                              product.category_id
+                            )}
+                          >
+                            <ProductCard
+                              product={product}
+                              options={options.filter(
+                                (option) =>
+                                  option.product_id ===
+                                  product.id
+                              )}
+                              onAdd={addToCart}
+                            />
+
+                            <span className="customer-category-caption">
+                              {getCategoryName(
+                                product.category_id
+                              )}
+                            </span>
+                          </div>
+                        )
+                      )}
+                    </div>
+                  </>
+                )
+              )}
+            </section>
+          </>
+        ) : (
+          <>
+            {/* MY ORDERS PAGE */}
+            <div
+              style={{
+                marginTop: 20,
+                marginBottom: 10,
+              }}
+            >
+              <button
+                type="button"
+                className="customer-refresh-button"
+                onClick={openMenu}
+              >
+                <ArrowLeft size={17} />
+                Back to Bakery Menu
+              </button>
+            </div>
+
+            <CustomerOrders
+              key={`${user?.id || "customer"}-${ordersRefreshKey}`}
+              user={user}
+            />
+          </>
+        )}
+
+        {/* FOOTER */}
         <footer className="customer-footer">
           <span className="customer-brand-mark">
             MB
@@ -641,7 +763,9 @@ export default function CustomerDashboard({
         <div
           className="customer-drawer-overlay"
           onMouseDown={(event) => {
-            if (event.target === event.currentTarget) {
+            if (
+              event.target === event.currentTarget
+            ) {
               setShowCart(false);
             }
           }}
@@ -664,7 +788,9 @@ export default function CustomerDashboard({
               <button
                 type="button"
                 className="customer-icon-button"
-                onClick={() => setShowCart(false)}
+                onClick={() =>
+                  setShowCart(false)
+                }
                 aria-label="Close cart"
               >
                 <X size={21} />
@@ -677,7 +803,9 @@ export default function CustomerDashboard({
 
                 <button
                   type="button"
-                  onClick={() => setNotice("")}
+                  onClick={() =>
+                    setNotice("")
+                  }
                   aria-label="Dismiss message"
                 >
                   <X size={16} />
@@ -692,13 +820,17 @@ export default function CustomerDashboard({
                 <h3>Your cart is empty</h3>
 
                 <p>
-                  Explore the menu and add something sweet.
+                  Explore the menu and add
+                  something sweet.
                 </p>
 
                 <button
                   type="button"
                   className="customer-primary-button"
-                  onClick={() => setShowCart(false)}
+                  onClick={() => {
+                    setShowCart(false);
+                    openMenu();
+                  }}
                 >
                   Browse Menu
                 </button>
@@ -713,19 +845,23 @@ export default function CustomerDashboard({
                     >
                       <div className="customer-cart-item-top">
                         <div>
-                          <h3>{item.product.name}</h3>
+                          <h3>
+                            {item.product.name}
+                          </h3>
 
                           {item.selectedOptions.map(
                             (option) => (
                               <p key={option.id}>
-                                {option.option_group}:{" "}
+                                {option.option_group}
+                                :{" "}
                                 {option.option_name}
                               </p>
                             )
                           )}
 
                           <span>
-                            {peso(item.finalPrice)} each
+                            {peso(item.finalPrice)}{" "}
+                            each
                           </span>
                         </div>
 
@@ -746,22 +882,31 @@ export default function CustomerDashboard({
                           <button
                             type="button"
                             onClick={() =>
-                              changeQuantity(item.key, -1)
+                              changeQuantity(
+                                item.key,
+                                -1
+                              )
                             }
                             disabled={
-                              item.quantity <= item.minimum
+                              item.quantity <=
+                              item.minimum
                             }
                             aria-label="Decrease quantity"
                           >
                             <Minus size={15} />
                           </button>
 
-                          <span>{item.quantity}</span>
+                          <span>
+                            {item.quantity}
+                          </span>
 
                           <button
                             type="button"
                             onClick={() =>
-                              changeQuantity(item.key, 1)
+                              changeQuantity(
+                                item.key,
+                                1
+                              )
                             }
                             aria-label="Increase quantity"
                           >
@@ -771,14 +916,16 @@ export default function CustomerDashboard({
 
                         <strong>
                           {peso(
-                            item.finalPrice * item.quantity
+                            item.finalPrice *
+                              item.quantity
                           )}
                         </strong>
                       </div>
 
                       {item.minimum > 1 && (
                         <p className="customer-minimum-note">
-                          Minimum order: {item.minimum}
+                          Minimum order:{" "}
+                          {item.minimum}
                         </p>
                       )}
                     </article>
@@ -788,15 +935,18 @@ export default function CustomerDashboard({
                 <div className="customer-cart-summary">
                   <div>
                     <span>Total</span>
-                    <strong>{peso(cartTotal)}</strong>
+
+                    <strong>
+                      {peso(cartTotal)}
+                    </strong>
                   </div>
 
                   <p>
-                    Final order details and availability
-                    will be confirmed during checkout.
+                    Final order details and
+                    availability will be confirmed
+                    during checkout.
                   </p>
 
-                  {/* CHECKOUT BUTTON IS NOW ENABLED */}
                   <button
                     type="button"
                     className="customer-primary-button customer-checkout-button"
@@ -808,7 +958,9 @@ export default function CustomerDashboard({
                   <button
                     type="button"
                     className="customer-continue-button"
-                    onClick={() => setShowCart(false)}
+                    onClick={() =>
+                      setShowCart(false)
+                    }
                   >
                     Continue Shopping
                   </button>
@@ -819,13 +971,11 @@ export default function CustomerDashboard({
         </div>
       )}
 
-      {/* NEW CHECKOUT VIEW */}
+      {/* CHECKOUT VIEW */}
       {showCheckout && (
         <div
           className="customer-drawer-overlay"
-          style={{
-            zIndex: 1000,
-          }}
+          style={{ zIndex: 1000 }}
         >
           <aside
             className="customer-cart-drawer"

@@ -9,37 +9,75 @@ import {
   Clock3,
   LogOut,
   CakeSlice,
+  BarChart3,
 } from "lucide-react";
 
 import { supabase } from "../lib/supabase";
+
 import AdminProducts from "./AdminProducts";
 import AdminReadyStock from "./AdminReadyStock";
 import AdminOrders from "./AdminOrders";
+import AdminPayments from "./AdminPayments";
+import AdminSalesReports from "./AdminSalesReports";
+import WeatherForecast from "./WeatherForecast";
+import PhilippineHolidays from "./PhilippineHolidays";
 
 import "./AdminDashboard.css";
 import "./AdminProducts.css";
 
+// ========================================
+// ADMIN ROUTES
+// ========================================
+
 const ADMIN_PAGES = {
   dashboard: "/admin",
+  reports: "/admin/reports",
   orders: "/admin/orders",
   products: "/admin/products",
   stock: "/admin/available-today",
   payments: "/admin/payments",
 };
 
+// ========================================
+// GET PAGE FROM URL
+// ========================================
+
 function getPageFromUrl() {
   const path =
     window.location.pathname.replace(/\/+$/, "") || "/";
 
-  const found = Object.entries(ADMIN_PAGES).find(
-    ([, url]) => url === path
-  );
+  switch (path) {
+    case "/admin":
+      return "dashboard";
 
-  return found ? found[0] : "dashboard";
+    case "/admin/reports":
+      return "reports";
+
+    case "/admin/orders":
+      return "orders";
+
+    case "/admin/products":
+      return "products";
+
+    case "/admin/available-today":
+      return "stock";
+
+    case "/admin/payments":
+      return "payments";
+
+    default:
+      return "dashboard";
+  }
 }
 
+// ========================================
+// ADMIN DASHBOARD
+// ========================================
+
 export default function AdminDashboard({ user, onLogout }) {
-  const [activePage, setActivePage] = useState(getPageFromUrl);
+  const [activePage, setActivePage] = useState(
+    () => getPageFromUrl()
+  );
 
   const [stats, setStats] = useState({
     totalOrders: 0,
@@ -51,30 +89,51 @@ export default function AdminDashboard({ user, onLogout }) {
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
 
+  // ========================================
+  // SYNCHRONIZE URL
+  // ========================================
+
   useEffect(() => {
-    function handlePopState() {
+    function syncPageWithUrl() {
       setActivePage(getPageFromUrl());
     }
 
-    window.addEventListener("popstate", handlePopState);
+    syncPageWithUrl();
+
+    window.addEventListener(
+      "popstate",
+      syncPageWithUrl
+    );
 
     return () => {
-      window.removeEventListener("popstate", handlePopState);
+      window.removeEventListener(
+        "popstate",
+        syncPageWithUrl
+      );
     };
   }, []);
 
+  // ========================================
+  // NAVIGATION
+  // ========================================
+
   function navigateTo(page) {
-    const url = ADMIN_PAGES[page];
+    const targetUrl = ADMIN_PAGES[page];
 
-    if (!url) return;
-
-    if (window.location.pathname !== url) {
-      window.history.pushState({}, "", url);
-    }
+    if (!targetUrl) return;
 
     setActivePage(page);
-    window.scrollTo({ top: 0, behavior: "instant" });
+
+    if (window.location.pathname !== targetUrl) {
+      window.location.assign(targetUrl);
+    } else {
+      window.location.reload();
+    }
   }
+
+  // ========================================
+  // LOAD DASHBOARD STATISTICS
+  // ========================================
 
   useEffect(() => {
     let active = true;
@@ -83,42 +142,79 @@ export default function AdminDashboard({ user, onLogout }) {
       setLoading(true);
       setErrorMessage("");
 
-      const results = await Promise.all([
-        supabase
-          .from("orders")
-          .select("id", { count: "exact", head: true }),
+      try {
+        const results = await Promise.all([
+          // TOTAL REAL ORDERS
+          supabase
+            .from("orders")
+            .select("id", {
+              count: "exact",
+              head: true,
+            })
+            .eq("is_test", false),
 
-        supabase
-          .from("orders")
-          .select("id", { count: "exact", head: true })
-          .eq("status", "pending"),
+          // PENDING REAL ORDERS
+          supabase
+            .from("orders")
+            .select("id", {
+              count: "exact",
+              head: true,
+            })
+            .eq("status", "pending")
+            .eq("is_test", false),
 
-        supabase
-          .from("products")
-          .select("id", { count: "exact", head: true }),
+          // TOTAL PRODUCTS
+          supabase
+            .from("products")
+            .select("id", {
+              count: "exact",
+              head: true,
+            }),
 
-        supabase
-          .from("payments")
-          .select("id", { count: "exact", head: true })
-          .eq("status", "pending"),
-      ]);
+          // PENDING REAL PAYMENTS
+          supabase
+            .from("payments")
+            .select("id, orders!inner(is_test)", {
+              count: "exact",
+              head: true,
+            })
+            .eq("status", "pending")
+            .eq("orders.is_test", false),
+        ]);
 
-      if (!active) return;
+        if (!active) return;
 
-      const failed = results.find((result) => result.error);
+        const failed = results.find(
+          (result) => result.error
+        );
 
-      if (failed) {
-        setErrorMessage(failed.error.message);
+        if (failed) {
+          setErrorMessage(failed.error.message);
+        }
+
+        setStats({
+          totalOrders: results[0].count ?? 0,
+          pendingOrders: results[1].count ?? 0,
+          totalProducts: results[2].count ?? 0,
+          pendingPayments: results[3].count ?? 0,
+        });
+      } catch (error) {
+        if (!active) return;
+
+        console.error(
+          "Dashboard statistics error:",
+          error
+        );
+
+        setErrorMessage(
+          error.message ||
+            "Unable to load dashboard statistics."
+        );
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
       }
-
-      setStats({
-        totalOrders: results[0].count ?? 0,
-        pendingOrders: results[1].count ?? 0,
-        totalProducts: results[2].count ?? 0,
-        pendingPayments: results[3].count ?? 0,
-      });
-
-      setLoading(false);
     }
 
     loadDashboard();
@@ -127,6 +223,10 @@ export default function AdminDashboard({ user, onLogout }) {
       active = false;
     };
   }, []);
+
+  // ========================================
+  // DASHBOARD STATISTIC CARDS
+  // ========================================
 
   const cards = [
     {
@@ -151,11 +251,20 @@ export default function AdminDashboard({ user, onLogout }) {
     },
   ];
 
+  // ========================================
+  // SIDEBAR MENU
+  // ========================================
+
   const menuItems = [
     {
       page: "dashboard",
       label: "Dashboard",
       icon: TrendingUp,
+    },
+    {
+      page: "reports",
+      label: "Sales Reports",
+      icon: BarChart3,
     },
     {
       page: "orders",
@@ -179,9 +288,14 @@ export default function AdminDashboard({ user, onLogout }) {
     },
   ];
 
+  // ========================================
+  // DASHBOARD OVERVIEW
+  // ========================================
+
   function renderDashboard() {
     return (
       <>
+        {/* DASHBOARD HEADER */}
         <header className="admin-header">
           <div>
             <p className="admin-kicker">
@@ -195,6 +309,7 @@ export default function AdminDashboard({ user, onLogout }) {
             </p>
           </div>
 
+          {/* ADMIN PROFILE */}
           <div className="admin-user">
             <div className="admin-avatar">
               {(user?.email?.[0] || "A").toUpperCase()}
@@ -207,6 +322,7 @@ export default function AdminDashboard({ user, onLogout }) {
           </div>
         </header>
 
+        {/* ERROR MESSAGE */}
         {errorMessage && (
           <p className="admin-error" role="alert">
             Could not load all dashboard data:{" "}
@@ -214,6 +330,7 @@ export default function AdminDashboard({ user, onLogout }) {
           </p>
         )}
 
+        {/* DASHBOARD STATISTICS */}
         <section className="admin-stats">
           {cards.map((card) => {
             const Icon = card.icon;
@@ -239,6 +356,22 @@ export default function AdminDashboard({ user, onLogout }) {
           })}
         </section>
 
+        {/* OPEN-METEO WEATHER FORECAST */}
+        <div
+          style={{
+            marginTop: 24,
+            marginBottom: 24,
+          }}
+        >
+          <WeatherForecast />
+        </div>
+
+        {/* PHILIPPINE HOLIDAY SALES PLANNER */}
+        <div style={{ marginBottom: 24 }}>
+          <PhilippineHolidays />
+        </div>
+
+        {/* WELCOME PANEL */}
         <section className="admin-welcome-panel">
           <div className="admin-welcome-icon">
             <CakeSlice size={26} />
@@ -248,8 +381,9 @@ export default function AdminDashboard({ user, onLogout }) {
 
           <p>
             Your bakery management dashboard is ready.
-            Here you'll manage customer orders, products,
-            available stock, and payment verification.
+            Here you'll manage customer orders,
+            products, available stock, payment
+            verification, and sales reports.
           </p>
 
           <span>
@@ -260,62 +394,48 @@ export default function AdminDashboard({ user, onLogout }) {
     );
   }
 
-  function renderComingSoon(title, description) {
-    return (
-      <>
-        <header className="admin-header">
-          <div>
-            <p className="admin-kicker">
-              BAKERY MANAGEMENT
-            </p>
-
-            <h1>{title}</h1>
-            <p>{description}</p>
-          </div>
-        </header>
-
-        <section className="admin-welcome-panel">
-          <div className="admin-welcome-icon">
-            <CakeSlice size={26} />
-          </div>
-
-          <h2>{title}</h2>
-
-          <p>
-            This management section will be developed next.
-          </p>
-        </section>
-      </>
-    );
-  }
+  // ========================================
+  // RENDER SELECTED ADMIN PAGE
+  // ========================================
 
   function renderPage() {
     switch (activePage) {
+      case "dashboard":
+        return renderDashboard();
+
+      case "reports":
+        return <AdminSalesReports />;
+
+      case "orders":
+        return <AdminOrders />;
+
       case "products":
         return <AdminProducts />;
 
       case "stock":
         return <AdminReadyStock />;
 
-      case "orders":
-        return <AdminOrders />;
-
       case "payments":
-        return renderComingSoon(
-          "Payments",
-          "Review and verify customer payments."
-        );
+        return <AdminPayments />;
 
       default:
         return renderDashboard();
     }
   }
 
+  // ========================================
+  // MAIN ADMIN LAYOUT
+  // ========================================
+
   return (
     <div className="admin-layout">
+      {/* SIDEBAR */}
       <aside className="admin-sidebar">
+        {/* BRAND */}
         <div className="admin-brand">
-          <div className="admin-brand-mark">MB</div>
+          <div className="admin-brand-mark">
+            MB
+          </div>
 
           <div>
             <strong>Mama's Bakehouse</strong>
@@ -323,6 +443,7 @@ export default function AdminDashboard({ user, onLogout }) {
           </div>
         </div>
 
+        {/* NAVIGATION */}
         <nav
           className="admin-menu"
           aria-label="Admin navigation"
@@ -333,16 +454,19 @@ export default function AdminDashboard({ user, onLogout }) {
 
           {menuItems.map((item, index) => {
             const Icon = item.icon;
-            const selected = activePage === item.page;
+            const selected =
+              activePage === item.page;
 
             return (
               <div key={item.page}>
-                {index === 1 && (
+                {/* MANAGEMENT SECTION */}
+                {index === 2 && (
                   <div className="admin-menu-label">
                     MANAGEMENT
                   </div>
                 )}
 
+                {/* MENU BUTTON */}
                 <button
                   type="button"
                   className={
@@ -350,9 +474,13 @@ export default function AdminDashboard({ user, onLogout }) {
                       ? "admin-menu-item selected"
                       : "admin-menu-item"
                   }
-                  onClick={() => navigateTo(item.page)}
+                  onClick={() =>
+                    navigateTo(item.page)
+                  }
                   aria-current={
-                    selected ? "page" : undefined
+                    selected
+                      ? "page"
+                      : undefined
                   }
                   style={{
                     width: "100%",
@@ -372,6 +500,7 @@ export default function AdminDashboard({ user, onLogout }) {
           })}
         </nav>
 
+        {/* LOGOUT */}
         <button
           type="button"
           className="admin-logout"
@@ -382,6 +511,7 @@ export default function AdminDashboard({ user, onLogout }) {
         </button>
       </aside>
 
+      {/* MAIN CONTENT */}
       <main className="admin-main">
         {renderPage()}
       </main>

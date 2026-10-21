@@ -42,7 +42,8 @@ function manilaToday() {
 
 function getStockStatus(item, today) {
   if (item.is_archived) return "Archived";
-  if (Number(item.quantity_available) === 0) return "Sold Out";
+  if (Number(item.quantity_available) === 0)
+    return "Sold Out";
   if (item.available_date < today) return "Expired";
   if (!item.is_listed) return "Unpublished";
   if (item.available_date > today) return "Scheduled";
@@ -116,7 +117,12 @@ const cardStyle = {
   padding: 24,
 };
 
-function SummaryCard({ title, value, icon: Icon, subtitle }) {
+function SummaryCard({
+  title,
+  value,
+  icon: Icon,
+  subtitle,
+}) {
   return (
     <div
       style={{
@@ -189,39 +195,52 @@ export default function AdminReadyStock() {
 
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [archiveTarget, setArchiveTarget] = useState(null);
+  const [archiveTarget, setArchiveTarget] =
+    useState(null);
 
   const [form, setForm] = useState(initialForm);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
-  const [statusFilter, setStatusFilter] = useState("All");
+  const [statusFilter, setStatusFilter] =
+    useState("All");
 
   const today = manilaToday();
+
+  // ========================================
+  // LOAD INVENTORY DATA
+  // ========================================
 
   async function loadData() {
     setLoading(true);
     setError("");
 
     try {
-      const [stockResult, productResult, optionResult] =
-        await Promise.all([
-          supabase
-            .from("ready_stock")
-            .select("*")
-            .order("created_at", { ascending: false }),
+      const [
+        stockResult,
+        productResult,
+        optionResult,
+      ] = await Promise.all([
+        supabase
+          .from("ready_stock")
+          .select("*")
+          .order("created_at", {
+            ascending: false,
+          }),
 
-          supabase
-            .from("products")
-            .select("id, name, base_price, is_available")
-            .order("name"),
+        supabase
+          .from("products")
+          .select(
+            "id, name, base_price, is_available"
+          )
+          .order("name"),
 
-          supabase
-            .from("product_options")
-            .select(
-              "id, product_id, option_group, option_name, additional_price, is_available"
-            )
-            .order("option_group"),
-        ]);
+        supabase
+          .from("product_options")
+          .select(
+            "id, product_id, option_group, option_name, additional_price, is_available"
+          )
+          .order("option_group"),
+      ]);
 
       const failed = [
         stockResult,
@@ -235,7 +254,9 @@ export default function AdminReadyStock() {
       setProducts(productResult.data || []);
       setOptions(optionResult.data || []);
     } catch (err) {
-      setError(err.message || "Unable to load stock.");
+      setError(
+        err.message || "Unable to load stock."
+      );
     } finally {
       setLoading(false);
     }
@@ -244,6 +265,10 @@ export default function AdminReadyStock() {
   useEffect(() => {
     loadData();
   }, []);
+
+  // ========================================
+  // INVENTORY CALCULATIONS
+  // ========================================
 
   const activeStock = stock.filter(
     (item) => !item.is_archived
@@ -255,7 +280,9 @@ export default function AdminReadyStock() {
 
   const availableUnits = activeStock
     .filter(
-      (item) => getStockStatus(item, today) === "In Stock"
+      (item) =>
+        getStockStatus(item, today) ===
+        "In Stock"
     )
     .reduce(
       (total, item) =>
@@ -264,7 +291,8 @@ export default function AdminReadyStock() {
     );
 
   const soldOutCount = activeStock.filter(
-    (item) => Number(item.quantity_available) === 0
+    (item) =>
+      Number(item.quantity_available) === 0
   ).length;
 
   const unpublishedCount = activeStock.filter(
@@ -272,9 +300,14 @@ export default function AdminReadyStock() {
   ).length;
 
   const filteredStock = stock.filter((item) => {
-    if (statusFilter === "All") return !item.is_archived;
+    if (statusFilter === "All") {
+      return !item.is_archived;
+    }
 
-    return getStockStatus(item, today) === statusFilter;
+    return (
+      getStockStatus(item, today) ===
+      statusFilter
+    );
   });
 
   const selectedProduct = products.find(
@@ -289,29 +322,43 @@ export default function AdminReadyStock() {
 
   const optionGroups = [
     ...new Set(
-      productOptions.map((option) => option.option_group)
+      productOptions.map(
+        (option) => option.option_group
+      )
     ),
   ];
 
-  function calculatePrice(productId, selectedOptions) {
+  // ========================================
+  // PRODUCT PRICING
+  // ========================================
+
+  function calculatePrice(
+    productId,
+    selectedOptions
+  ) {
     const product = products.find(
       (item) => item.id === productId
     );
 
     if (!product) return 0;
 
-    const extras = Object.values(selectedOptions).reduce(
-      (total, optionId) => {
-        const option = options.find(
-          (item) => item.id === optionId
-        );
+    const extras = Object.values(
+      selectedOptions
+    ).reduce((total, optionId) => {
+      const option = options.find(
+        (item) => item.id === optionId
+      );
 
-        return total + Number(option?.additional_price || 0);
-      },
-      0
+      return (
+        total +
+        Number(option?.additional_price || 0)
+      );
+    }, 0);
+
+    return (
+      Number(product.base_price || 0) +
+      extras
     );
-
-    return Number(product.base_price || 0) + extras;
   }
 
   function updateField(name, value) {
@@ -327,7 +374,9 @@ export default function AdminReadyStock() {
       product_id: productId,
       selectedOptions: {},
       price_per_unit: productId
-        ? String(calculatePrice(productId, {}))
+        ? String(
+            calculatePrice(productId, {})
+          )
         : "",
     }));
   }
@@ -343,11 +392,18 @@ export default function AdminReadyStock() {
         ...previous,
         selectedOptions,
         price_per_unit: String(
-          calculatePrice(previous.product_id, selectedOptions)
+          calculatePrice(
+            previous.product_id,
+            selectedOptions
+          )
         ),
       };
     });
   }
+
+  // ========================================
+  // ADD AND EDIT FORMS
+  // ========================================
 
   function openAddForm() {
     setEditingId(null);
@@ -360,27 +416,37 @@ export default function AdminReadyStock() {
 
   function openEditForm(item) {
     if (item.is_archived) {
-      setError("Restore this listing before editing it.");
+      setError(
+        "Restore this listing before editing it."
+      );
       return;
     }
 
     const selectedOptions = {};
 
-    (item.option_ids || []).forEach((optionId) => {
-      const option = options.find(
-        (entry) => entry.id === optionId
-      );
+    (item.option_ids || []).forEach(
+      (optionId) => {
+        const option = options.find(
+          (entry) => entry.id === optionId
+        );
 
-      if (option) {
-        selectedOptions[option.option_group] = optionId;
+        if (option) {
+          selectedOptions[
+            option.option_group
+          ] = optionId;
+        }
       }
-    });
+    );
 
     setForm({
       product_id: item.product_id,
       selectedOptions,
-      quantity_available: String(item.quantity_available),
-      price_per_unit: String(item.price_per_unit),
+      quantity_available: String(
+        item.quantity_available
+      ),
+      price_per_unit: String(
+        item.price_per_unit
+      ),
       available_date: item.available_date,
       is_listed: item.is_listed,
       notes: item.notes || "",
@@ -400,8 +466,13 @@ export default function AdminReadyStock() {
     setError("");
   }
 
+  // ========================================
+  // SAVE STOCK
+  // ========================================
+
   async function handleSave(event) {
     event.preventDefault();
+
     if (saving) return;
 
     setError("");
@@ -414,22 +485,32 @@ export default function AdminReadyStock() {
 
     if (
       optionGroups.some(
-        (group) => !form.selectedOptions[group]
+        (group) =>
+          !form.selectedOptions[group]
       )
     ) {
-      setError("Please select an option for every group.");
+      setError(
+        "Please select an option for every group."
+      );
       return;
     }
 
-    const quantity = Number(form.quantity_available);
-    const price = Number(form.price_per_unit);
+    const quantity = Number(
+      form.quantity_available
+    );
+
+    const price = Number(
+      form.price_per_unit
+    );
 
     if (
       form.quantity_available.trim() === "" ||
       !Number.isInteger(quantity) ||
       quantity < 0
     ) {
-      setError("Quantity must be a whole number of 0 or more.");
+      setError(
+        "Quantity must be a whole number of 0 or more."
+      );
       return;
     }
 
@@ -438,21 +519,29 @@ export default function AdminReadyStock() {
       !Number.isFinite(price) ||
       price < 0
     ) {
-      setError("Please enter a valid selling price.");
+      setError(
+        "Please enter a valid selling price."
+      );
       return;
     }
 
     if (!form.available_date) {
-      setError("Please select an available date.");
+      setError(
+        "Please select an available date."
+      );
       return;
     }
 
-    if (form.is_listed && quantity === 0) {
-      setError("Cannot publish a listing with zero stock.");
+    if (
+      form.is_listed &&
+      quantity === 0
+    ) {
+      setError(
+        "Cannot publish a listing with zero stock."
+      );
       return;
     }
 
-    // NEW: Prevent expired stock from being published.
     if (
       form.is_listed &&
       form.available_date < manilaToday()
@@ -497,24 +586,30 @@ export default function AdminReadyStock() {
       }
 
       if (result.error) {
-        if (result.error.code === "23505") {
+        if (
+          result.error.code === "23505"
+        ) {
           setError(
-            "This product variation already has a stock listing " +
-            "for the selected date. Please edit the existing " +
-            "listing to update its quantity."
+            "This product variation already has a stock listing for the selected date. Please edit the existing listing to update its quantity."
           );
         } else {
-          setError(result.error.message);
+          setError(
+            result.error.message
+          );
         }
         return;
       }
 
       if (!result.data?.length) {
-        setError("No stock record was saved.");
+        setError(
+          "No stock record was saved."
+        );
         return;
       }
 
-      const wasEditing = Boolean(editingId);
+      const wasEditing = Boolean(
+        editingId
+      );
 
       closeForm();
       await loadData();
@@ -525,11 +620,18 @@ export default function AdminReadyStock() {
           : "Ready stock added successfully."
       );
     } catch (err) {
-      setError(err.message || "Unable to save stock.");
+      setError(
+        err.message ||
+          "Unable to save stock."
+      );
     } finally {
       setSaving(false);
     }
   }
+
+  // ========================================
+  // PUBLISH OR UNPUBLISH
+  // ========================================
 
   async function toggleListing(item) {
     if (busyId) return;
@@ -538,16 +640,22 @@ export default function AdminReadyStock() {
     setMessage("");
 
     if (item.is_archived) {
-      setError("Restore this listing before publishing it.");
+      setError(
+        "Restore this listing before publishing it."
+      );
       return;
     }
 
-    if (!item.is_listed && item.quantity_available <= 0) {
-      setError("Cannot publish a listing with zero stock.");
+    if (
+      !item.is_listed &&
+      item.quantity_available <= 0
+    ) {
+      setError(
+        "Cannot publish a listing with zero stock."
+      );
       return;
     }
 
-    // NEW: Prevent publishing a listing from a past date.
     if (
       !item.is_listed &&
       item.available_date < manilaToday()
@@ -561,17 +669,26 @@ export default function AdminReadyStock() {
     setBusyId(item.id);
 
     try {
-      const { data, error: updateError } = await supabase
+      const {
+        data,
+        error: updateError,
+      } = await supabase
         .from("ready_stock")
-        .update({ is_listed: !item.is_listed })
+        .update({
+          is_listed: !item.is_listed,
+        })
         .eq("id", item.id)
         .eq("is_archived", false)
         .select("id, is_listed");
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        throw updateError;
+      }
 
       if (!data?.length) {
-        throw new Error("The listing could not be updated.");
+        throw new Error(
+          "The listing could not be updated."
+        );
       }
 
       await loadData();
@@ -582,22 +699,38 @@ export default function AdminReadyStock() {
           : "Listing unpublished."
       );
     } catch (err) {
-      setError(err.message || "Unable to update listing.");
+      setError(
+        err.message ||
+          "Unable to update listing."
+      );
     } finally {
       setBusyId(null);
     }
   }
 
+  // ========================================
+  // ARCHIVE LISTING
+  // ========================================
+
   async function confirmArchive() {
-    if (!archiveTarget || busyId) return;
+    if (
+      !archiveTarget ||
+      busyId
+    ) {
+      return;
+    }
 
     const target = archiveTarget;
+
     setBusyId(target.id);
     setError("");
     setMessage("");
 
     try {
-      const { data, error: updateError } = await supabase
+      const {
+        data,
+        error: updateError,
+      } = await supabase
         .from("ready_stock")
         .update({
           is_archived: true,
@@ -605,16 +738,22 @@ export default function AdminReadyStock() {
         })
         .eq("id", target.id)
         .eq("is_archived", false)
-        .select("id, is_archived, is_listed");
+        .select(
+          "id, is_archived, is_listed"
+        );
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        throw updateError;
+      }
 
       if (
         !data?.length ||
         !data[0].is_archived ||
         data[0].is_listed
       ) {
-        throw new Error("The listing was not archived.");
+        throw new Error(
+          "The listing was not archived."
+        );
       }
 
       setArchiveTarget(null);
@@ -623,15 +762,21 @@ export default function AdminReadyStock() {
       await loadData();
 
       setMessage(
-        "Stock listing archived successfully. " +
-        "You can restore it using the Archived filter."
+        "Stock listing archived successfully. You can restore it using the Archived filter."
       );
     } catch (err) {
-      setError(err.message || "Unable to archive listing.");
+      setError(
+        err.message ||
+          "Unable to archive listing."
+      );
     } finally {
       setBusyId(null);
     }
   }
+
+  // ========================================
+  // RESTORE LISTING
+  // ========================================
 
   async function restoreListing(item) {
     if (busyId) return;
@@ -641,7 +786,10 @@ export default function AdminReadyStock() {
     setMessage("");
 
     try {
-      const { data, error: updateError } = await supabase
+      const {
+        data,
+        error: updateError,
+      } = await supabase
         .from("ready_stock")
         .update({
           is_archived: false,
@@ -649,26 +797,34 @@ export default function AdminReadyStock() {
         })
         .eq("id", item.id)
         .eq("is_archived", true)
-        .select("id, is_archived, is_listed");
+        .select(
+          "id, is_archived, is_listed"
+        );
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        throw updateError;
+      }
 
       if (
         !data?.length ||
         data[0].is_archived ||
         data[0].is_listed
       ) {
-        throw new Error("The listing was not restored.");
+        throw new Error(
+          "The listing was not restored."
+        );
       }
 
       await loadData();
 
       setMessage(
-        "Stock listing restored successfully. " +
-        "It remains unpublished until you publish it."
+        "Stock listing restored successfully. It remains unpublished until you publish it."
       );
     } catch (err) {
-      setError(err.message || "Unable to restore listing.");
+      setError(
+        err.message ||
+          "Unable to restore listing."
+      );
     } finally {
       setBusyId(null);
     }
@@ -676,23 +832,36 @@ export default function AdminReadyStock() {
 
   function getProductName(productId) {
     return (
-      products.find((product) => product.id === productId)
-        ?.name || "Unknown Product"
+      products.find(
+        (product) =>
+          product.id === productId
+      )?.name || "Unknown Product"
     );
   }
 
   function getOptionNames(optionIds) {
     return (optionIds || [])
       .map((id) =>
-        options.find((option) => option.id === id)
+        options.find(
+          (option) =>
+            option.id === id
+        )
       )
       .filter(Boolean)
-      .map((option) => option.option_name)
+      .map(
+        (option) =>
+          option.option_name
+      )
       .join(" • ");
   }
 
+  // ========================================
+  // PAGE
+  // ========================================
+
   return (
     <section className="admin-products-page">
+      {/* HEADER */}
       <div className="admin-products-heading">
         <div>
           <p className="admin-kicker">
@@ -702,7 +871,8 @@ export default function AdminReadyStock() {
           <h1>Available Today</h1>
 
           <p>
-            Manage freshly prepared products ready for sale.
+            Manage freshly prepared products
+            ready for sale.
           </p>
         </div>
 
@@ -734,8 +904,12 @@ export default function AdminReadyStock() {
         </div>
       </div>
 
+      {/* ERRORS AND MESSAGES */}
       {error && (
-        <p className="admin-error" role="alert">
+        <p
+          className="admin-error"
+          role="alert"
+        >
           {error}
         </p>
       )}
@@ -760,12 +934,15 @@ export default function AdminReadyStock() {
         <div
           role="presentation"
           onClick={() => {
-            if (!busyId) setArchiveTarget(null);
+            if (!busyId) {
+              setArchiveTarget(null);
+            }
           }}
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(35, 25, 20, 0.45)",
+            background:
+              "rgba(35, 25, 20, 0.45)",
             zIndex: 1000,
             display: "flex",
             alignItems: "center",
@@ -777,12 +954,15 @@ export default function AdminReadyStock() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="archive-dialog-title"
-            onClick={(event) => event.stopPropagation()}
+            onClick={(event) =>
+              event.stopPropagation()
+            }
             style={{
               ...cardStyle,
               width: "100%",
               maxWidth: 460,
-              boxShadow: "0 20px 60px rgba(0,0,0,0.15)",
+              boxShadow:
+                "0 20px 60px rgba(0,0,0,0.15)",
             }}
           >
             <div
@@ -803,7 +983,8 @@ export default function AdminReadyStock() {
             <h2
               id="archive-dialog-title"
               style={{
-                fontFamily: "Georgia, serif",
+                fontFamily:
+                  "Georgia, serif",
                 color: "#39291f",
                 margin: "0 0 12px",
               }}
@@ -818,12 +999,19 @@ export default function AdminReadyStock() {
                 marginBottom: 12,
               }}
             >
-              Are you sure you want to archive{" "}
+              Are you sure you want to
+              archive{" "}
               <strong>
-                {getProductName(archiveTarget.product_id)}
+                {getProductName(
+                  archiveTarget.product_id
+                )}
               </strong>
-              {getOptionNames(archiveTarget.option_ids)
-                ? ` — ${getOptionNames(archiveTarget.option_ids)}`
+              {getOptionNames(
+                archiveTarget.option_ids
+              )
+                ? ` — ${getOptionNames(
+                    archiveTarget.option_ids
+                  )}`
                 : ""}
               ?
             </p>
@@ -835,9 +1023,11 @@ export default function AdminReadyStock() {
                 marginBottom: 22,
               }}
             >
-              This listing will be unpublished and removed
-              from active inventory. Its stock history will
-              be preserved, and you can restore it later.
+              This listing will be
+              unpublished and removed from
+              active inventory. Its stock
+              history will be preserved,
+              and you can restore it later.
             </p>
 
             <div
@@ -852,7 +1042,9 @@ export default function AdminReadyStock() {
                 type="button"
                 style={buttonStyle}
                 disabled={Boolean(busyId)}
-                onClick={() => setArchiveTarget(null)}
+                onClick={() =>
+                  setArchiveTarget(null)
+                }
               >
                 Cancel
               </button>
@@ -864,14 +1056,16 @@ export default function AdminReadyStock() {
                 onClick={confirmArchive}
               >
                 <Archive size={16} />
-                {busyId ? "Archiving..." : "Archive Listing"}
+                {busyId
+                  ? "Archiving..."
+                  : "Archive Listing"}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* ADD / EDIT FORM */}
+      {/* ADD / EDIT STOCK FORM */}
       {showForm && (
         <div
           style={{
@@ -882,7 +1076,8 @@ export default function AdminReadyStock() {
           <div
             style={{
               display: "flex",
-              justifyContent: "space-between",
+              justifyContent:
+                "space-between",
               alignItems: "center",
               gap: 15,
               marginBottom: 22,
@@ -891,7 +1086,8 @@ export default function AdminReadyStock() {
             <h2
               style={{
                 margin: 0,
-                fontFamily: "Georgia, serif",
+                fontFamily:
+                  "Georgia, serif",
                 color: "#39291f",
               }}
             >
@@ -911,7 +1107,12 @@ export default function AdminReadyStock() {
           </div>
 
           <form onSubmit={handleSave}>
-            <div style={{ marginBottom: 18 }}>
+            {/* PRODUCT */}
+            <div
+              style={{
+                marginBottom: 18,
+              }}
+            >
               <label
                 htmlFor="stock-product"
                 style={labelStyle}
@@ -923,7 +1124,9 @@ export default function AdminReadyStock() {
                 id="stock-product"
                 value={form.product_id}
                 onChange={(event) =>
-                  chooseProduct(event.target.value)
+                  chooseProduct(
+                    event.target.value
+                  )
                 }
                 style={inputStyle}
                 required
@@ -932,69 +1135,101 @@ export default function AdminReadyStock() {
                   Select a bakery product
                 </option>
 
-                {products.map((product) => (
-                  <option
-                    key={product.id}
-                    value={product.id}
-                  >
-                    {product.name} —{" "}
-                    {peso(product.base_price)}
-                    {!product.is_available
-                      ? " (Catalog Unavailable)"
-                      : ""}
-                  </option>
-                ))}
+                {products.map(
+                  (product) => (
+                    <option
+                      key={product.id}
+                      value={product.id}
+                    >
+                      {product.name} —{" "}
+                      {peso(
+                        product.base_price
+                      )}
+                      {!product.is_available
+                        ? " (Catalog Unavailable)"
+                        : ""}
+                    </option>
+                  )
+                )}
               </select>
             </div>
 
+            {/* PRODUCT VARIATIONS */}
             {selectedProduct &&
-              optionGroups.map((group) => (
-                <div
-                  style={{ marginBottom: 18 }}
-                  key={group}
-                >
-                  <label style={labelStyle}>
-                    {group} *
-                  </label>
-
-                  <select
-                    value={
-                      form.selectedOptions[group] || ""
-                    }
-                    onChange={(event) =>
-                      chooseOption(
-                        group,
-                        event.target.value
-                      )
-                    }
-                    style={inputStyle}
-                    required
+              optionGroups.map(
+                (group) => (
+                  <div
+                    style={{
+                      marginBottom: 18,
+                    }}
+                    key={group}
                   >
-                    <option value="">
-                      Select {group}
-                    </option>
+                    <label
+                      style={labelStyle}
+                    >
+                      {group} *
+                    </label>
 
-                    {productOptions
-                      .filter(
-                        (option) =>
-                          option.option_group === group
-                      )
-                      .map((option) => (
-                        <option
-                          key={option.id}
-                          value={option.id}
-                        >
-                          {option.option_name} (
-                          {Number(option.additional_price) > 0
-                            ? "+"
-                            : ""}
-                          {peso(option.additional_price)})
-                        </option>
-                      ))}
-                  </select>
-                </div>
-              ))}
+                    <select
+                      value={
+                        form
+                          .selectedOptions[
+                          group
+                        ] || ""
+                      }
+                      onChange={(
+                        event
+                      ) =>
+                        chooseOption(
+                          group,
+                          event.target.value
+                        )
+                      }
+                      style={inputStyle}
+                      required
+                    >
+                      <option value="">
+                        Select {group}
+                      </option>
 
+                      {productOptions
+                        .filter(
+                          (option) =>
+                            option.option_group ===
+                            group
+                        )
+                        .map(
+                          (option) => (
+                            <option
+                              key={
+                                option.id
+                              }
+                              value={
+                                option.id
+                              }
+                            >
+                              {
+                                option.option_name
+                              }{" "}
+                              (
+                              {Number(
+                                option.additional_price
+                              ) > 0
+                                ? "+"
+                                : ""}
+                              {peso(
+                                option.additional_price
+                              )}
+                              )
+                            </option>
+                          )
+                        )}
+                    </select>
+                  </div>
+                )
+              )}
+
+            {/* QUANTITY, PRICE AND DATE */}
             <div
               style={{
                 display: "grid",
@@ -1003,7 +1238,11 @@ export default function AdminReadyStock() {
                 gap: 18,
               }}
             >
-              <div style={{ marginBottom: 18 }}>
+              <div
+                style={{
+                  marginBottom: 18,
+                }}
+              >
                 <label
                   htmlFor="stock-quantity"
                   style={labelStyle}
@@ -1016,7 +1255,9 @@ export default function AdminReadyStock() {
                   type="number"
                   min="0"
                   step="1"
-                  value={form.quantity_available}
+                  value={
+                    form.quantity_available
+                  }
                   onChange={(event) =>
                     updateField(
                       "quantity_available",
@@ -1028,7 +1269,11 @@ export default function AdminReadyStock() {
                 />
               </div>
 
-              <div style={{ marginBottom: 18 }}>
+              <div
+                style={{
+                  marginBottom: 18,
+                }}
+              >
                 <label
                   htmlFor="stock-price"
                   style={labelStyle}
@@ -1041,7 +1286,9 @@ export default function AdminReadyStock() {
                   type="number"
                   min="0"
                   step="0.01"
-                  value={form.price_per_unit}
+                  value={
+                    form.price_per_unit
+                  }
                   onChange={(event) =>
                     updateField(
                       "price_per_unit",
@@ -1053,7 +1300,11 @@ export default function AdminReadyStock() {
                 />
               </div>
 
-              <div style={{ marginBottom: 18 }}>
+              <div
+                style={{
+                  marginBottom: 18,
+                }}
+              >
                 <label
                   htmlFor="stock-date"
                   style={labelStyle}
@@ -1064,7 +1315,9 @@ export default function AdminReadyStock() {
                 <input
                   id="stock-date"
                   type="date"
-                  value={form.available_date}
+                  value={
+                    form.available_date
+                  }
                   onChange={(event) =>
                     updateField(
                       "available_date",
@@ -1077,7 +1330,12 @@ export default function AdminReadyStock() {
               </div>
             </div>
 
-            <div style={{ marginBottom: 18 }}>
+            {/* NOTES */}
+            <div
+              style={{
+                marginBottom: 18,
+              }}
+            >
               <label
                 htmlFor="stock-notes"
                 style={labelStyle}
@@ -1089,7 +1347,10 @@ export default function AdminReadyStock() {
                 id="stock-notes"
                 value={form.notes}
                 onChange={(event) =>
-                  updateField("notes", event.target.value)
+                  updateField(
+                    "notes",
+                    event.target.value
+                  )
                 }
                 placeholder="Example: Freshly baked this morning."
                 rows={3}
@@ -1100,6 +1361,7 @@ export default function AdminReadyStock() {
               />
             </div>
 
+            {/* PUBLISH OPTION */}
             <label
               style={{
                 display: "flex",
@@ -1120,6 +1382,7 @@ export default function AdminReadyStock() {
                   )
                 }
               />
+
               Publish this stock listing
             </label>
 
@@ -1128,7 +1391,9 @@ export default function AdminReadyStock() {
               disabled={saving}
               style={{
                 ...primaryButtonStyle,
-                opacity: saving ? 0.6 : 1,
+                opacity: saving
+                  ? 0.6
+                  : 1,
               }}
             >
               <Save size={17} />
@@ -1154,28 +1419,44 @@ export default function AdminReadyStock() {
       >
         <SummaryCard
           title="Total Listings"
-          value={loading ? "..." : activeStock.length}
+          value={
+            loading
+              ? "..."
+              : activeStock.length
+          }
           icon={Package}
           subtitle="Active inventory records"
         />
 
         <SummaryCard
           title="Available Units"
-          value={loading ? "..." : availableUnits}
+          value={
+            loading
+              ? "..."
+              : availableUnits
+          }
           icon={ShoppingBag}
           subtitle="Published and available today"
         />
 
         <SummaryCard
           title="Sold Out"
-          value={loading ? "..." : soldOutCount}
+          value={
+            loading
+              ? "..."
+              : soldOutCount
+          }
           icon={CircleAlert}
           subtitle="Active listings with zero quantity"
         />
 
         <SummaryCard
           title="Unpublished"
-          value={loading ? "..." : unpublishedCount}
+          value={
+            loading
+              ? "..."
+              : unpublishedCount
+          }
           icon={EyeOff}
           subtitle="Active listings hidden from customers"
         />
@@ -1186,7 +1467,8 @@ export default function AdminReadyStock() {
         style={{
           display: "flex",
           alignItems: "center",
-          justifyContent: "space-between",
+          justifyContent:
+            "space-between",
           flexWrap: "wrap",
           gap: 15,
           marginBottom: 18,
@@ -1195,7 +1477,8 @@ export default function AdminReadyStock() {
         <div>
           <h2
             style={{
-              fontFamily: "Georgia, serif",
+              fontFamily:
+                "Georgia, serif",
               color: "#39291f",
               fontSize: 23,
               margin: "0 0 5px",
@@ -1213,7 +1496,8 @@ export default function AdminReadyStock() {
           >
             {loading
               ? "Loading inventory..."
-              : statusFilter === "Archived"
+              : statusFilter ===
+                  "Archived"
                 ? `Showing ${filteredStock.length} archived listings`
                 : `Showing ${filteredStock.length} of ${activeStock.length} active listings`}
           </p>
@@ -1226,13 +1510,18 @@ export default function AdminReadyStock() {
             gap: 10,
           }}
         >
-          <Filter size={17} color="#76543c" />
+          <Filter
+            size={17}
+            color="#76543c"
+          />
 
           <select
             aria-label="Filter stock by status"
             value={statusFilter}
             onChange={(event) =>
-              setStatusFilter(event.target.value)
+              setStatusFilter(
+                event.target.value
+              )
             }
             style={{
               ...inputStyle,
@@ -1240,14 +1529,27 @@ export default function AdminReadyStock() {
               minWidth: 175,
             }}
           >
-            <option value="All">All Statuses</option>
-            <option value="In Stock">In Stock</option>
-            <option value="Unpublished">Unpublished</option>
-            <option value="Sold Out">Sold Out</option>
-            <option value="Scheduled">Scheduled</option>
-            <option value="Expired">Expired</option>
+            <option value="All">
+              All Statuses
+            </option>
+            <option value="In Stock">
+              In Stock
+            </option>
+            <option value="Unpublished">
+              Unpublished
+            </option>
+            <option value="Sold Out">
+              Sold Out
+            </option>
+            <option value="Scheduled">
+              Scheduled
+            </option>
+            <option value="Expired">
+              Expired
+            </option>
             <option value="Archived">
-              Archived ({archivedStock.length})
+              Archived (
+              {archivedStock.length})
             </option>
           </select>
         </div>
@@ -1259,214 +1561,327 @@ export default function AdminReadyStock() {
           <p>Loading stock...</p>
         ) : filteredStock.length === 0 ? (
           <div className="admin-welcome-panel">
-            {statusFilter === "Archived" ? (
+            {statusFilter ===
+            "Archived" ? (
               <Archive size={32} />
             ) : (
               <Package size={32} />
             )}
 
             <h2>
-              {statusFilter === "Archived"
+              {statusFilter ===
+              "Archived"
                 ? "No Archived Listings"
-                : activeStock.length === 0
+                : activeStock.length ===
+                    0
                   ? "No Ready Stock Yet"
                   : "No Matching Listings"}
             </h2>
 
             <p>
-              {statusFilter === "Archived"
+              {statusFilter ===
+              "Archived"
                 ? "Archived stock listings will appear here."
-                : activeStock.length === 0
+                : activeStock.length ===
+                    0
                   ? "Click Add Ready Stock to create a listing."
                   : "No listings match the selected status."}
             </p>
 
-            {statusFilter !== "All" && (
+            {statusFilter !==
+              "All" && (
               <button
                 type="button"
                 style={buttonStyle}
-                onClick={() => setStatusFilter("All")}
+                onClick={() =>
+                  setStatusFilter(
+                    "All"
+                  )
+                }
               >
                 Show Active Listings
               </button>
             )}
           </div>
         ) : (
-          filteredStock.map((item) => {
-            const status = getStockStatus(item, today);
-            const [color, background] = statusColors[status];
+          filteredStock.map(
+            (item) => {
+              const status =
+                getStockStatus(
+                  item,
+                  today
+                );
 
-            return (
-              <article
-                className="admin-product-card"
-                key={item.id}
-              >
-                <div className="admin-product-icon">
-                  {item.is_archived ? (
-                    <Archive size={22} />
-                  ) : (
-                    <Package size={22} />
-                  )}
-                </div>
+              const [
+                color,
+                background,
+              ] =
+                statusColors[
+                  status
+                ];
 
-                <div className="admin-product-details">
-                  <div
-                    className="admin-product-title-row"
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      flexWrap: "wrap",
-                      gap: 12,
-                    }}
-                  >
-                    <h3>
-                      {getProductName(item.product_id)}
-                    </h3>
-
-                    <span
-                      style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        borderRadius: 20,
-                        padding: "5px 11px",
-                        fontSize: 12,
-                        fontWeight: 600,
-                        color,
-                        background,
-                      }}
-                    >
-                      {status}
-                    </span>
-                  </div>
-
-                  {getOptionNames(item.option_ids) && (
-                    <p className="admin-product-description">
-                      {getOptionNames(item.option_ids)}
-                    </p>
-                  )}
-
-                  {item.notes && (
-                    <p className="admin-product-description">
-                      {item.notes}
-                    </p>
-                  )}
-
-                  <div
-                    className="admin-product-meta"
-                    style={{
-                      display: "flex",
-                      flexWrap: "wrap",
-                      gap: 15,
-                    }}
-                  >
-                    <span>
-                      <Package size={14} />
-                      Quantity: {item.quantity_available}
-                    </span>
-
-                    <span>
-                      <CalendarDays size={14} />
-                      {item.available_date}
-                    </span>
-
-                    <span>
-                      {item.is_archived
-                        ? "Archived"
-                        : item.is_listed
-                          ? "Published"
-                          : "Not published"}
-                    </span>
-                  </div>
-
-                  {item.is_archived && item.archived_at && (
-                    <p
-                      style={{
-                        color: "#947c6d",
-                        fontSize: 12,
-                        marginTop: 10,
-                      }}
-                    >
-                      Archived on{" "}
-                      {new Date(item.archived_at).toLocaleString(
-                        "en-PH",
-                        { timeZone: "Asia/Manila" }
-                      )}
-                    </p>
-                  )}
-
-                  <div
-                    style={{
-                      display: "flex",
-                      gap: 10,
-                      flexWrap: "wrap",
-                      marginTop: 14,
-                    }}
-                  >
+              return (
+                <article
+                  className="admin-product-card"
+                  key={item.id}
+                >
+                  <div className="admin-product-icon">
                     {item.is_archived ? (
-                      <button
-                        type="button"
-                        style={buttonStyle}
-                        disabled={Boolean(busyId)}
-                        onClick={() => restoreListing(item)}
-                      >
-                        <ArchiveRestore size={16} />
-                        {busyId === item.id
-                          ? "Restoring..."
-                          : "Restore"}
-                      </button>
+                      <Archive
+                        size={22}
+                      />
                     ) : (
-                      <>
-                        <button
-                          type="button"
-                          style={buttonStyle}
-                          onClick={() => openEditForm(item)}
-                          disabled={Boolean(busyId)}
-                        >
-                          <Pencil size={15} />
-                          Edit
-                        </button>
-
-                        <button
-                          type="button"
-                          style={buttonStyle}
-                          onClick={() => toggleListing(item)}
-                          disabled={Boolean(busyId)}
-                        >
-                          {busyId === item.id
-                            ? "Updating..."
-                            : item.is_listed
-                              ? "Unpublish"
-                              : "Publish"}
-                        </button>
-
-                        <button
-                          type="button"
-                          style={{
-                            ...buttonStyle,
-                            color: "#8a623e",
-                          }}
-                          disabled={Boolean(busyId)}
-                          onClick={() => {
-                            setError("");
-                            setMessage("");
-                            setArchiveTarget(item);
-                          }}
-                        >
-                          <Archive size={16} />
-                          Archive
-                        </button>
-                      </>
+                      <Package
+                        size={22}
+                      />
                     )}
                   </div>
-                </div>
 
-                <div className="admin-product-price">
-                  <small>Price per unit</small>
-                  <strong>{peso(item.price_per_unit)}</strong>
-                </div>
-              </article>
-            );
-          })
+                  <div className="admin-product-details">
+                    <div
+                      className="admin-product-title-row"
+                      style={{
+                        display:
+                          "flex",
+                        alignItems:
+                          "center",
+                        flexWrap:
+                          "wrap",
+                        gap: 12,
+                      }}
+                    >
+                      <h3>
+                        {getProductName(
+                          item.product_id
+                        )}
+                      </h3>
+
+                      <span
+                        style={{
+                          display:
+                            "inline-flex",
+                          alignItems:
+                            "center",
+                          borderRadius:
+                            20,
+                          padding:
+                            "5px 11px",
+                          fontSize: 12,
+                          fontWeight:
+                            600,
+                          color,
+                          background,
+                        }}
+                      >
+                        {status}
+                      </span>
+                    </div>
+
+                    {getOptionNames(
+                      item.option_ids
+                    ) && (
+                      <p className="admin-product-description">
+                        {getOptionNames(
+                          item.option_ids
+                        )}
+                      </p>
+                    )}
+
+                    {item.notes && (
+                      <p className="admin-product-description">
+                        {item.notes}
+                      </p>
+                    )}
+
+                    <div
+                      className="admin-product-meta"
+                      style={{
+                        display:
+                          "flex",
+                        flexWrap:
+                          "wrap",
+                        gap: 15,
+                      }}
+                    >
+                      <span>
+                        <Package
+                          size={14}
+                        />
+                        Quantity:{" "}
+                        {
+                          item.quantity_available
+                        }
+                      </span>
+
+                      <span>
+                        <CalendarDays
+                          size={14}
+                        />
+                        {
+                          item.available_date
+                        }
+                      </span>
+
+                      <span>
+                        {item.is_archived
+                          ? "Archived"
+                          : item.is_listed
+                            ? "Published"
+                            : "Not published"}
+                      </span>
+                    </div>
+
+                    {item.is_archived &&
+                      item.archived_at && (
+                        <p
+                          style={{
+                            color:
+                              "#947c6d",
+                            fontSize:
+                              12,
+                            marginTop:
+                              10,
+                          }}
+                        >
+                          Archived
+                          on{" "}
+                          {new Date(
+                            item.archived_at
+                          ).toLocaleString(
+                            "en-PH",
+                            {
+                              timeZone:
+                                "Asia/Manila",
+                            }
+                          )}
+                        </p>
+                      )}
+
+                    <div
+                      style={{
+                        display:
+                          "flex",
+                        gap: 10,
+                        flexWrap:
+                          "wrap",
+                        marginTop:
+                          14,
+                      }}
+                    >
+                      {item.is_archived ? (
+                        <button
+                          type="button"
+                          style={
+                            buttonStyle
+                          }
+                          disabled={Boolean(
+                            busyId
+                          )}
+                          onClick={() =>
+                            restoreListing(
+                              item
+                            )
+                          }
+                        >
+                          <ArchiveRestore
+                            size={16}
+                          />
+                          {busyId ===
+                          item.id
+                            ? "Restoring..."
+                            : "Restore"}
+                        </button>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            style={
+                              buttonStyle
+                            }
+                            onClick={() =>
+                              openEditForm(
+                                item
+                              )
+                            }
+                            disabled={Boolean(
+                              busyId
+                            )}
+                          >
+                            <Pencil
+                              size={15}
+                            />
+                            Edit
+                          </button>
+
+                          <button
+                            type="button"
+                            style={
+                              buttonStyle
+                            }
+                            onClick={() =>
+                              toggleListing(
+                                item
+                              )
+                            }
+                            disabled={Boolean(
+                              busyId
+                            )}
+                          >
+                            {busyId ===
+                            item.id
+                              ? "Updating..."
+                              : item.is_listed
+                                ? "Unpublish"
+                                : "Publish"}
+                          </button>
+
+                          <button
+                            type="button"
+                            style={{
+                              ...buttonStyle,
+                              color:
+                                "#8a623e",
+                            }}
+                            disabled={Boolean(
+                              busyId
+                            )}
+                            onClick={() => {
+                              setError(
+                                ""
+                              );
+                              setMessage(
+                                ""
+                              );
+                              setArchiveTarget(
+                                item
+                              );
+                            }}
+                          >
+                            <Archive
+                              size={16}
+                            />
+                            Archive
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="admin-product-price">
+                    <small>
+                      Price per unit
+                    </small>
+
+                    <strong>
+                      {peso(
+                        item.price_per_unit
+                      )}
+                    </strong>
+                  </div>
+                </article>
+              );
+            }
+          )
         )}
       </div>
     </section>
