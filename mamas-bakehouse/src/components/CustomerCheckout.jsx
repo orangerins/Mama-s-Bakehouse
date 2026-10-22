@@ -15,10 +15,6 @@ import {
   AlertCircle,
 } from "lucide-react";
 
-// ========================================
-// HELPERS
-// ========================================
-
 const peso = (amount) =>
   new Intl.NumberFormat("en-PH", {
     style: "currency",
@@ -44,10 +40,6 @@ function addDays(dateString, days) {
   date.setUTCDate(date.getUTCDate() + days);
   return date.toISOString().slice(0, 10);
 }
-
-// ========================================
-// STYLES
-// ========================================
 
 const fieldStyle = {
   width: "100%",
@@ -97,46 +89,27 @@ const primaryButton = {
   gap: 8,
 };
 
-// ========================================
-// CUSTOMER CHECKOUT
-// ========================================
-
 export default function CustomerCheckout({
   cart = [],
   onBack,
   onClose,
 }) {
-  // Meetup details
   const [meetupDate, setMeetupDate] = useState("");
   const [meetupTime, setMeetupTime] = useState("");
   const [meetupLocation, setMeetupLocation] = useState("");
   const [notes, setNotes] = useState("");
 
-  // Payment
-  const [paymentMethod, setPaymentMethod] =
-    useState("cash");
+  const [paymentMethod, setPaymentMethod] = useState("cash");
 
-  // Checkout
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [submittedOrder, setSubmittedOrder] =
-    useState(null);
+  const [submittedOrder, setSubmittedOrder] = useState(null);
 
-  // Email notification status
-  const [emailMessage, setEmailMessage] = useState("");
-
-  // ========================================
-  // API #4 - NOMINATIM LOCATION SEARCH
-  // ========================================
-
-  const [locationQuery, setLocationQuery] =
-    useState("");
-  const [locationResults, setLocationResults] =
-    useState([]);
-  const [locationLoading, setLocationLoading] =
-    useState(false);
-  const [locationMessage, setLocationMessage] =
-    useState("");
+  // API #4: OpenStreetMap Nominatim
+  const [locationQuery, setLocationQuery] = useState("");
+  const [locationResults, setLocationResults] = useState([]);
+  const [locationLoading, setLocationLoading] = useState(false);
+  const [locationMessage, setLocationMessage] = useState("");
 
   const searchController = useRef(null);
   const lastSearchAt = useRef(0);
@@ -151,9 +124,7 @@ export default function CustomerCheckout({
     const query = locationQuery.trim();
 
     if (query.length < 3) {
-      setLocationMessage(
-        "Please enter at least 3 characters."
-      );
+      setLocationMessage("Please enter at least 3 characters.");
       setLocationResults([]);
       return;
     }
@@ -207,9 +178,7 @@ export default function CustomerCheckout({
       const data = await response.json();
 
       if (!Array.isArray(data)) {
-        throw new Error(
-          "Invalid location search response."
-        );
+        throw new Error("Invalid location search response.");
       }
 
       const validResults = data.filter(
@@ -257,10 +226,6 @@ export default function CustomerCheckout({
     setError("");
   }
 
-  // ========================================
-  // CART TOTALS
-  // ========================================
-
   const total = cart.reduce(
     (sum, item) =>
       sum +
@@ -301,67 +266,16 @@ export default function CustomerCheckout({
     minimumPreparationDays
   );
 
-  const isLocked =
-    submitting || Boolean(submittedOrder);
+  const isLocked = submitting || Boolean(submittedOrder);
 
-  // ========================================
-  // API #5 - EMAIL NOTIFICATION REQUEST
-  // ========================================
-  // The Edge Function must verify the logged-in
-  // customer and look up the order itself.
-  // Never pass an email address or API key from
-  // the browser as an authoritative value.
-
-  async function requestOrderEmail(orderNumber) {
-    try {
-      const { data, error: functionError } =
-        await supabase.functions.invoke(
-          "send-order-email",
-          {
-            body: {
-              event: "order_received",
-              order_number: orderNumber,
-            },
-          }
-        );
-
-      if (functionError) {
-        throw functionError;
-      }
-
-      if (data?.success !== true) {
-        throw new Error(
-          data?.error ||
-            "Email delivery was not confirmed."
-        );
-      }
-
-      setEmailMessage(
-        "Your order confirmation email has been sent."
-      );
-    } catch (emailError) {
-      console.warn(
-        "Order created, but email notification was not confirmed:",
-        emailError
-      );
-
-      setEmailMessage(
-        "Your order was submitted successfully. Email notification is currently unavailable; you can still track your order under My Orders."
-      );
-    }
-  }
-
-  // ========================================
-  // SUBMIT CUSTOMER ORDER TO SUPABASE
-  // ========================================
-
+  // Order submission only.
+  // Resend and send-order-email have been removed.
   async function submitCheckout(event) {
     event.preventDefault();
 
     if (submitting || submittedOrder) return;
 
     setError("");
-    setEmailMessage("");
 
     if (cart.length === 0) {
       setError("Your cart is empty.");
@@ -373,9 +287,7 @@ export default function CustomerCheckout({
       !meetupTime ||
       !meetupLocation.trim()
     ) {
-      setError(
-        "Please complete the meetup details."
-      );
+      setError("Please complete the meetup details.");
       return;
     }
 
@@ -396,28 +308,23 @@ export default function CustomerCheckout({
     setSubmitting(true);
 
     try {
-      const { data, error: rpcError } =
-        await supabase.rpc(
-          "create_customer_order",
-          {
-            p_items: cart.map((item) => ({
-              product_id: item.product.id,
-              option_ids: (
-                item.selectedOptions || []
-              ).map((option) => option.id),
-              quantity: item.quantity,
-            })),
-
-            p_meetup_date: meetupDate,
-            p_meetup_time: meetupTime,
-            p_meetup_location:
-              meetupLocation.trim(),
-            p_customer_notes:
-              notes.trim() || null,
-            p_payment_method:
-              selectedPaymentMethod,
-          }
-        );
+      const { data, error: rpcError } = await supabase.rpc(
+        "create_customer_order",
+        {
+          p_items: cart.map((item) => ({
+            product_id: item.product.id,
+            option_ids: (
+              item.selectedOptions || []
+            ).map((option) => option.id),
+            quantity: item.quantity,
+          })),
+          p_meetup_date: meetupDate,
+          p_meetup_time: meetupTime,
+          p_meetup_location: meetupLocation.trim(),
+          p_customer_notes: notes.trim() || null,
+          p_payment_method: selectedPaymentMethod,
+        }
+      );
 
       if (rpcError) throw rpcError;
 
@@ -427,12 +334,7 @@ export default function CustomerCheckout({
         );
       }
 
-      // The order is now saved in Supabase.
       setSubmittedOrder(data);
-
-      // Email failure must never cancel the order
-      // or cause the customer to submit twice.
-      await requestOrderEmail(data.order_number);
     } catch (err) {
       console.error("Checkout error:", err);
 
@@ -444,10 +346,6 @@ export default function CustomerCheckout({
       setSubmitting(false);
     }
   }
-
-  // ========================================
-  // CHECKOUT INTERFACE
-  // ========================================
 
   return (
     <section
@@ -531,9 +429,7 @@ export default function CustomerCheckout({
 
       {/* ORDER SUMMARY */}
       <div style={cardStyle}>
-        <h3 style={{ marginTop: 0 }}>
-          Order Summary
-        </h3>
+        <h3 style={{ marginTop: 0 }}>Order Summary</h3>
 
         {cart.map((item, index) => (
           <div
@@ -720,9 +616,7 @@ export default function CustomerCheckout({
               <button
                 type="button"
                 onClick={searchLandmarks}
-                disabled={
-                  isLocked || locationLoading
-                }
+                disabled={isLocked || locationLoading}
                 style={primaryButton}
               >
                 {locationLoading ? (
@@ -755,9 +649,7 @@ export default function CustomerCheckout({
                 {locationResults.map(
                   (place, index) => (
                     <button
-                      key={
-                        place.place_id || index
-                      }
+                      key={place.place_id || index}
                       type="button"
                       onClick={() =>
                         selectLocation(place)
@@ -861,9 +753,7 @@ export default function CustomerCheckout({
             />
 
             <div>
-              <strong>
-                Preparation Time
-              </strong>
+              <strong>Preparation Time</strong>
 
               <p
                 style={{
@@ -955,9 +845,7 @@ export default function CustomerCheckout({
                   type="radio"
                   name="paymentMethod"
                   value="cash"
-                  checked={
-                    paymentMethod === "cash"
-                  }
+                  checked={paymentMethod === "cash"}
                   onChange={() =>
                     setPaymentMethod("cash")
                   }
@@ -967,9 +855,7 @@ export default function CustomerCheckout({
                 <Wallet size={21} />
 
                 <div>
-                  <strong>
-                    Cash on Meetup
-                  </strong>
+                  <strong>Cash on Meetup</strong>
                   <p
                     style={{
                       ...mutedText,
@@ -1000,9 +886,7 @@ export default function CustomerCheckout({
                   type="radio"
                   name="paymentMethod"
                   value="gcash"
-                  checked={
-                    paymentMethod === "gcash"
-                  }
+                  checked={paymentMethod === "gcash"}
                   onChange={() =>
                     setPaymentMethod("gcash")
                   }
@@ -1012,9 +896,7 @@ export default function CustomerCheckout({
                 <Smartphone size={21} />
 
                 <div>
-                  <strong>
-                    GCash
-                  </strong>
+                  <strong>GCash</strong>
                   <p
                     style={{
                       ...mutedText,
@@ -1065,9 +947,7 @@ export default function CustomerCheckout({
           >
             <CheckCircle2 size={34} />
 
-            <h3>
-              Order Submitted Successfully!
-            </h3>
+            <h3>Order Submitted Successfully!</h3>
 
             <p>
               Your order has been sent to
@@ -1084,9 +964,7 @@ export default function CustomerCheckout({
             <p>
               Total Amount:{" "}
               <strong>
-                {peso(
-                  submittedOrder.total_amount
-                )}
+                {peso(submittedOrder.total_amount)}
               </strong>
             </p>
 
@@ -1107,29 +985,13 @@ export default function CustomerCheckout({
               Do not send any required down
               payment until your order is approved.
             </p>
-
-            {emailMessage && (
-              <p
-                style={{
-                  borderTop:
-                    "1px solid #c9e6d2",
-                  paddingTop: 12,
-                  fontSize: 14,
-                  lineHeight: 1.6,
-                }}
-              >
-                {emailMessage}
-              </p>
-            )}
           </div>
         )}
 
         {/* SUBMIT BUTTON */}
         <button
           type="submit"
-          disabled={
-            isLocked || cart.length === 0
-          }
+          disabled={isLocked || cart.length === 0}
           style={{
             ...primaryButton,
             width: "100%",
