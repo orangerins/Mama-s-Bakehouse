@@ -167,7 +167,7 @@ export default function App() {
     setLoading(true);
 
     try {
-      const { error: loginError } =
+      const { data: loginData, error: loginError } =
         await supabase.auth.signInWithPassword({
           email: email.trim(),
           password,
@@ -177,9 +177,44 @@ export default function App() {
         throw loginError;
       }
 
-      // The authentication listener will handle the
-      // new session and check whether the user is admin.
-      // Avoid performing a duplicate role check here.
+      // Repair a missing customer profile after authentication.
+      // This also helps accounts created before the registration fix.
+      const signedInUser = loginData?.user;
+      if (signedInUser) {
+        const { data: adminRecord, error: adminError } = await supabase
+          .from("admin_users")
+          .select("user_id")
+          .eq("user_id", signedInUser.id)
+          .maybeSingle();
+
+        if (!adminError && !adminRecord) {
+          const { data: existingProfile, error: lookupError } = await supabase
+            .from("profiles")
+            .select("id")
+            .eq("id", signedInUser.id)
+            .maybeSingle();
+
+          if (!lookupError && !existingProfile) {
+            const { error: profileError } = await supabase
+              .from("profiles")
+              .insert({
+                id: signedInUser.id,
+                full_name:
+                  signedInUser.user_metadata?.full_name ||
+                  signedInUser.email?.split("@")[0] ||
+                  "Customer",
+                phone_number:
+                  signedInUser.user_metadata?.phone_number || null,
+              });
+
+            if (profileError) {
+              console.error("Could not create missing customer profile:", profileError);
+            }
+          }
+        }
+      }
+
+      // The authentication listener handles the dashboard and role.
     } catch (err) {
       setError(
         err.message ||
@@ -221,6 +256,7 @@ export default function App() {
           options: {
             data: {
               full_name: normalizedName,
+              phone_number: phoneNumber.trim() || null,
             },
           },
         });
@@ -229,37 +265,9 @@ export default function App() {
         throw registrationError;
       }
 
-      if (data.user) {
-        // Create or update the customer profile.
-        // The profile ID matches the Auth user ID.
-        const { error: profileError } = await supabase
-          .from("profiles")
-          .upsert(
-            {
-              id: data.user.id,
-              full_name: normalizedName,
-              phone_number: phoneNumber.trim() || null,
-            },
-            {
-              onConflict: "id",
-            }
-          );
-
-        if (profileError) {
-          console.error(
-            "Profile creation failed:",
-            profileError
-          );
-
-          setError(
-            "Your account was created, but the profile " +
-              "could not be saved. " +
-              profileError.message
-          );
-
-          return;
-        }
-      }
+      // With email confirmation enabled, signUp does not usually
+      // provide an authenticated session. Profile creation is
+      // deferred until the customer confirms their email and logs in.
 
       if (data.session) {
         // The auth listener handles the signed-in user.
